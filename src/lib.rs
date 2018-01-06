@@ -1,6 +1,6 @@
-//! This crate implements a type for computing 
-//! [Kahan sums](https://en.wikipedia.org/wiki/Kahan_summation_algorithm) 
-//! over floating point numbers. 
+//! This crate implements a type for computing
+//! [Kahan sums](https://en.wikipedia.org/wiki/Kahan_summation_algorithm)
+//! over floating point numbers.
 //! It also implements a new trait for computing Kahan sums over iterators of floats.
 
 
@@ -15,6 +15,15 @@ use std::borrow::Borrow;
 pub struct KahanSum<T: Float> {
     sum: T,
     err: T,
+}
+
+impl<T: Float> Default for KahanSum<T> {
+    fn default() -> Self {
+        KahanSum {
+            sum: T::zero(),
+            err: T::zero(),
+        }
+    }
 }
 
 /// Represents an ongoing Kahan summation. New terms can be added
@@ -33,10 +42,7 @@ pub struct KahanSum<T: Float> {
 impl<T: Float> KahanSum<T> {
     /// Creates a new `KahanSum` with sum and err initialized to 0
     pub fn new() -> Self {
-        KahanSum {
-            sum: T::zero(),
-            err: T::zero(),
-        }
+        KahanSum::default()
     }
 
     /// Creates a new `KahanSum` with starting sum set to `initial`, but err initalized to 0
