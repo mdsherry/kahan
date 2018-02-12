@@ -68,7 +68,7 @@ impl<T: Float> KahanSum<T> {
 impl<T: Float> AddAssign<T> for KahanSum<T> {
     fn add_assign(&mut self, rhs: T) {
         let mut rhs = rhs;
-        if self.sum < rhs {
+        if self.sum.abs() < rhs.abs() {
             swap(&mut self.sum, &mut rhs);
         }
         let y = rhs - self.err;
