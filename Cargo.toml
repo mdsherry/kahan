@@ -1,6 +1,6 @@
 [package]
 name = "kahan"
-version = "0.1.1-beta.1"
+version = "0.1.2"
 authors = ["Mark Sherry <mdsherry@gmail.com>"]
 description = "Provides types to perform Kahan summation"
 documentation = "https://docs.rs/kahan/0.1.0/kahan/"

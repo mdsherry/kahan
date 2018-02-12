@@ -8,7 +8,7 @@ extern crate num_traits;
 use num_traits::float::Float;
 use std::ops::{Add, AddAssign};
 use std::borrow::Borrow;
-
+use std::mem::swap;
 
 
 #[derive(Debug, Clone)]
@@ -64,6 +64,21 @@ impl<T: Float> KahanSum<T> {
     }
 }
 
+
+impl<T: Float> AddAssign<T> for KahanSum<T> {
+    fn add_assign(&mut self, rhs: T) {
+        let mut rhs = rhs;
+        if self.sum < rhs {
+            swap(&mut self.sum, &mut rhs);
+        }
+        let y = rhs - self.err;
+        let sum = self.sum + y;
+        let err = (sum - self.sum) - y;
+        self.sum = sum;
+        self.err = err;
+    }
+}
+
 impl<T: Float> Add<T> for KahanSum<T> {
     type Output = Self;
     fn add(self, rhs: T) -> Self::Output {
@@ -94,16 +109,6 @@ impl<T, U, V> KahanSummator<T> for U
 {
     fn kahan_sum(self) -> KahanSum<T> {
         self.fold(KahanSum::new(), |sum, item| sum + *item.borrow())
-    }
-}
-
-impl<T: Float> AddAssign<T> for KahanSum<T> {
-    fn add_assign(&mut self, rhs: T) {
-        let y = rhs - self.err;
-        let sum = self.sum + y;
-        let err = (sum - self.sum) - y;
-        self.sum = sum;
-        self.err = err;
     }
 }
 
