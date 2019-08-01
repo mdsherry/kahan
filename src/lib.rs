@@ -3,13 +3,11 @@
 //! over floating point numbers.
 //! It also implements a new trait for computing Kahan sums over iterators of floats.
 
-
 extern crate num_traits;
 use num_traits::float::Float;
-use std::ops::{Add, AddAssign};
 use std::borrow::Borrow;
 use std::mem::swap;
-
+use std::ops::{Add, AddAssign};
 
 #[derive(Debug, Clone)]
 pub struct KahanSum<T: Float> {
@@ -64,7 +62,6 @@ impl<T: Float> KahanSum<T> {
     }
 }
 
-
 impl<T: Float> AddAssign<T> for KahanSum<T> {
     fn add_assign(&mut self, rhs: T) {
         let mut rhs = rhs;
@@ -88,6 +85,45 @@ impl<T: Float> Add<T> for KahanSum<T> {
     }
 }
 
+impl<T: Float> AddAssign<&KahanSum<T>> for KahanSum<T> {
+    fn add_assign(&mut self, rhs: &KahanSum<T>) {
+        let mut rhs = rhs.clone();
+        if self.sum.abs() < rhs.sum.abs() {
+            swap(self, &mut rhs);
+        }
+        let combined_errors = rhs.err + self.err;
+        let y = rhs.sum - combined_errors;
+        let sum = self.sum + y;
+        let err = (sum - self.sum) - y;
+        self.sum = sum;
+        self.err = err;
+    }
+}
+
+impl<T: Float> Add<&KahanSum<T>> for KahanSum<T> {
+    type Output = Self;
+    fn add(self, rhs: &KahanSum<T>) -> Self::Output {
+        let mut rv = self;
+        rv += rhs;
+        rv
+    }
+}
+
+impl<T: Float> AddAssign<KahanSum<T>> for KahanSum<T> {
+    fn add_assign(&mut self, rhs: KahanSum<T>) {
+        *self += &rhs;
+    }
+}
+
+impl<T: Float> Add<KahanSum<T>> for KahanSum<T> {
+    type Output = Self;
+    fn add(self, rhs: KahanSum<T>) -> Self::Output {
+        let mut rv = self;
+        rv += rhs;
+        rv
+    }
+}
+
 pub trait KahanSummator<T: Float> {
     /// Computes the Kahan sum of an iterator.
     /// # Example
@@ -103,9 +139,10 @@ pub trait KahanSummator<T: Float> {
 }
 
 impl<T, U, V> KahanSummator<T> for U
-    where U: Iterator<Item = V>,
-          V: Borrow<T>,
-          T: Float
+where
+    U: Iterator<Item = V>,
+    V: Borrow<T>,
+    T: Float,
 {
     fn kahan_sum(self) -> KahanSum<T> {
         self.fold(KahanSum::new(), |sum, item| sum + *item.borrow())
@@ -114,15 +151,34 @@ impl<T, U, V> KahanSummator<T> for U
 
 #[cfg(test)]
 mod tests {
-    use ::KahanSummator;
+    use KahanSum;
+    use KahanSummator;
     #[test]
     fn it_works() {
-        let summands = [10000.0f32, 3.14159f32, 2.71828f32, 3.14159f32, 2.71828f32, 3.14159f32,
-                        2.71828f32];
+        let summands = [
+            10000.0f32, 3.14159f32, 2.71828f32, 3.14159f32, 2.71828f32, 3.14159f32, 2.71828f32,
+        ];
         // The true sum is 10017.57961. Summing f32s without use of the algorithm
         // gives an answer of 10017.581. Kahan summation gives the more accurate
         // result of 10017.58 with an error of 0.000467. (10017.58 - 0.000467 = 10017.579533)
         assert_eq!(10017.58f32, summands.iter().kahan_sum().sum());
+    }
 
+    #[test]
+    fn associativity_holds() {
+        let summands = [
+            123.14159f32,
+            -2.71828f32,
+            -3.14159f32,
+            2.71828f32,
+            3.14159f32,
+            2.71828f32,
+        ];
+        let more_summands = [-3.14159f32, 2.71828f32, 3.14159f32, 2.71828f32, 3.14159f32];
+        let first: KahanSum<f32> = summands.iter().kahan_sum();
+        let second: KahanSum<f32> = more_summands.iter().kahan_sum();
+        let summed = first + second;
+        let proper: KahanSum<f32> = summands.iter().chain(more_summands.iter()).kahan_sum();
+        assert_eq!(summed.sum(), proper.sum());
     }
 }
